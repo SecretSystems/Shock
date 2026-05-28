@@ -1,0 +1,81 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Local PiShock Control</title>
+  <style>
+    body { font-family: Arial; background:#111827; color:white; padding:30px; }
+    .box { max-width:420px; margin:auto; background:#1f2937; padding:20px; border-radius:12px; }
+    button,input { width:100%; padding:12px; margin:8px 0; border-radius:8px; border:0; }
+    button { color:white; font-weight:bold; cursor:pointer; }
+    .connect { background:#2563eb; }
+    .beep { background:#7c3aed; }
+    .vibrate { background:#059669; }
+    .shock { background:#dc2626; }
+    .stop { background:#374151; }
+    #log { white-space:pre-wrap; background:#000; padding:10px; height:180px; overflow:auto; }
+  </style>
+</head>
+<body>
+<div class="box">
+  <h2>Local PiShock Control</h2>
+
+  <button class="connect" onclick="connectHub()">Connect Hub</button>
+
+  <label>Shocker ID</label>
+  <input id="shockerId" value="16199">
+
+  <label>Intensity</label>
+  <input id="intensity" type="number" value="10" min="0" max="100">
+
+  <label>Duration ms</label>
+  <input id="duration" type="number" value="1000" min="100" max="15000">
+
+  <button class="beep" onclick="sendOp('beep')">Beep</button>
+  <button class="vibrate" onclick="sendOp('vibrate')">Vibrate</button>
+  <button class="shock" onclick="sendOp('shock')">Shock</button>
+  <button class="stop" onclick="sendOp('stop')">Stop</button>
+
+  <pre id="log">Ready.</pre>
+</div>
+
+<script>
+let port;
+let writer;
+
+function log(msg) {
+  document.getElementById("log").textContent += "\n" + msg;
+}
+
+async function connectHub() {
+  port = await navigator.serial.requestPort();
+  await port.open({ baudRate: 115200 });
+  writer = port.writable.getWriter();
+  log("Connected.");
+}
+
+async function sendJson(obj) {
+  if (!writer) return log("Not connected.");
+  const data = JSON.stringify(obj) + "\n";
+  await writer.write(new TextEncoder().encode(data));
+  log("Sent: " + data);
+}
+
+function sendOp(op) {
+  const id = Number(document.getElementById("shockerId").value);
+  const intensity = Number(document.getElementById("intensity").value);
+  const duration = Number(document.getElementById("duration").value);
+
+  sendJson({
+    cmd: "operate",
+    value: {
+      id,
+      duration: op === "stop" ? 0 : duration,
+      intensity: op === "beep" || op === "stop" ? 0 : intensity,
+      op
+    }
+  });
+}
+</script>
+</body>
+</html>
